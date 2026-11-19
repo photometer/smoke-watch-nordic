@@ -1,0 +1,80 @@
+[project]
+name = "smoke-watch-nordic"
+version = "0.1.0"
+description = "Daily pipeline for wildfire smoke over the Nordic region from satellite, model and station data"
+readme = "README.md"
+authors = [
+    { name = "Lisa Androsova", email = "elandrossova@gmail.com" }
+]
+requires-python = ">=3.15"
+dependencies = [
+    "alembic>=1.20.1",
+    "boto3>=1.43.117",
+    "cfgrib>=0.9.15.1",
+    "earthaccess>=0.19.0",
+    "ecmwf-opendata>=0.3.35",
+    "geopandas>=1.2.0",
+    "numpy>=2.5.4",
+    "pandas>=3.1.1",
+    "prefect>=3.9.2",
+    "psycopg[binary]>=3.3.9",
+    "pydantic>=2.14.3",
+    "pydantic-settings>=2.16.2",
+    "python-dotenv>=1.2.4",
+    "pyyaml>=6.0.3",
+    "rasterio>=1.5.2",
+    "requests>=2.34.2",
+    "rioxarray>=0.24.0",
+    "sqlalchemy>=2.1.8",
+    "xarray>=2026.9.0",
+]
+
+[project.scripts]
+smoke-watch-nordic = "smoke_watch:main"
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "smoke_watch"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers -m 'not integration'"
+markers = ["integration: needs Docker services (PostGIS, S3)"]
+xfail_strict = true
+
+[tool.mypy]
+# Libraries without type information: skip their types instead of failing
+[[tool.mypy.overrides]]
+module = ["rasterio.*", "geopandas.*"]
+ignore_missing_imports = true
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.1",
+    "pandas-stubs>=3.1.0.261029",
+    "poethepoet>=0.49.0",
+    "prefect-docker>=0.7.4",
+    "pytest>=9.2.0",
+    "ruff>=0.17.5",
+    "types-pyyaml>=6.0.12.20261113",
+    "types-requests>=2.33.0.20261030",
+]
+
+[tool.poe.tasks]
+up = { cmd = "docker compose -f docker-compose.dev.yaml up -d", help = "Start PostGIS, SeaweedFS and the Prefect server" }
+daily = { cmd = "smoke-watch-nordic daily", env = { SMOKE_ENV = "dev" }, help = "Observations for yesterday, or --day YYYY-MM-DD" }
+backfill = { cmd = "smoke-watch-nordic backfill", env = { SMOKE_ENV = "dev" }, help = "Observations for a period: --start YYYY-MM-DD --end YYYY-MM-DD" }
+forecast = { cmd = "smoke-watch-nordic forecast", env = { SMOKE_ENV = "dev" }, help = "Forecast for today's run, or --run-date YYYY-MM-DD" }
+migrate = { cmd = "alembic upgrade head", env = { SMOKE_ENV = "dev" }, help = "Apply database migrations to the local database" }
+test = { cmd = "pytest", help = "Run the unit tests (no .env files are read)" }
+test-integration = { cmd = "pytest -m integration", help = "Run the integration tests (start the stack with `poe up` first)" }
+lint = { sequence = ["ruff check", "ruff format --check", "mypy src"], default_item_type = "cmd", help = "Lint, check formatting and type-check" }

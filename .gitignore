@@ -218,3 +218,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local data
+data/
+
+# Per-developer env files with secrets (.env.dev.local etc.)
+.env.*.local

@@ -1,0 +1,6 @@
+# Analysis domains. bbox order: west, south, east, north (EPSG:4326 degrees).
+nordic:
+  bbox: [2.0, 54.0, 32.0, 72.0]
+  crs: EPSG:3035
+  resolution_m: 5000
+  region_key: norway_fylker

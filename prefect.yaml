@@ -1,0 +1,63 @@
+---
+
+name: smoke-watch-nordic
+prefect-version: 3.9.2
+
+build:
+- prefect_docker.deployments.steps.build_docker_image:
+    id: build_image
+    requires: prefect-docker>=0.3.1
+    image_name: smoke-watch-nordic
+    tag: v1
+    dockerfile: Dockerfile
+
+push:
+- prefect_docker.deployments.steps.push_docker_image:
+    requires: prefect-docker>=0.3.1
+    image_name: '{{ build_image.image_name }}'
+    tag: '{{ build_image.tag }}'
+
+pull:
+- prefect.deployments.steps.set_working_directory:
+    directory: /opt/prefect/smoke-watch-nordic
+
+deployments:
+- name: daily
+  version: null
+  tags: [observations]
+  description: >-
+    Observations for one UTC day. Scheduled for yesterday; for an archive date use
+    "Custom run" and set the day parameter.
+  schedules:
+  - cron: "0 6 * * *"
+    timezone: UTC
+  flow_name: daily_pipeline
+  entrypoint: src/smoke_watch/flows/daily.py:daily_pipeline
+  parameters: {}
+  work_pool: &smoke_pool
+    name: smoke-pool
+    work_queue_name: null
+    job_variables:
+      image: '{{ build_image.image }}'
+
+- name: backfill
+  version: null
+  tags: [observations, backfill]
+  description: Observations for every day of a period. Manual only, start and end are required.
+  schedules: []
+  flow_name: backfill
+  entrypoint: src/smoke_watch/flows/backfill.py:backfill
+  parameters: {}
+  work_pool: *smoke_pool
+
+- name: forecast
+  version: null
+  tags: [forecast]
+  description: Forecast for the latest runs (00 and 12 UTC); no archive.
+  schedules:
+  - cron: "0 9,21 * * *"  # a few hours after the 00 and 12 UTC runs are published; adjust
+    timezone: UTC
+  flow_name: forecast_pipeline
+  entrypoint: src/smoke_watch/flows/forecast.py:forecast_pipeline
+  parameters: {}
+  work_pool: *smoke_pool

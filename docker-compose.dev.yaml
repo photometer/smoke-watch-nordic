@@ -1,0 +1,32 @@
+services:
+  postgis:
+    image: postgis/postgis:17-3.5
+    environment:
+      POSTGRES_USER: smoke
+      POSTGRES_PASSWORD: smoke
+      POSTGRES_DB: smoke
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgis-data:/var/lib/postgresql/data
+
+  s3:
+    image: chrislusf/seaweedfs
+    command: server -s3
+    ports:
+      - "8333:8333"
+    volumes:
+      - s3-data:/data
+
+  prefect-server:
+    image: prefecthq/prefect:3-latest
+    command: prefect server start --host 0.0.0.0
+    ports:
+      - "4200:4200"
+    volumes:
+      - prefect-data:/root/.prefect
+
+volumes:
+  postgis-data:
+  s3-data:
+  prefect-data:
